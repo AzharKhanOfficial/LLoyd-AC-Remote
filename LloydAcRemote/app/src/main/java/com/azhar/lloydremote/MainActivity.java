@@ -124,9 +124,14 @@ public class MainActivity extends Activity {
     }
 
     private void updateIrStatus() {
-        boolean available = ir != null && ir.hasIrEmitter();
-        status.setText(available ? "IR emitter ready" : "No IR emitter detected on this phone");
-        status.setTextColor(available ? Color.rgb(102, 214, 140) : Color.rgb(255, 183, 77));
+        try {
+            boolean available = ir != null && ir.hasIrEmitter();
+            status.setText(available ? "IR emitter ready" : "No IR emitter detected on this phone");
+            status.setTextColor(available ? Color.rgb(102, 214, 140) : Color.rgb(255, 183, 77));
+        } catch (RuntimeException ex) {
+            status.setText("IR service unavailable");
+            status.setTextColor(Color.rgb(255, 183, 77));
+        }
     }
 
     private void changeTemperature(int delta) {
@@ -151,15 +156,23 @@ public class MainActivity extends Activity {
     }
 
     private void send(int mainCommand) {
-        if (ir == null || !ir.hasIrEmitter()) {
-            Toast.makeText(this, "This phone has no usable IR emitter", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        try {
+            if (ir == null || !ir.hasIrEmitter()) {
+                Toast.makeText(this, "This phone has no usable IR emitter", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        int[] pattern = LloydProtocol.frame(mainCommand, powerOn, temp, mode, fan, swing);
-        ir.transmit(38000, pattern);
-        status.setText("Sent  •  " + temp + "°C  •  " + mode.toUpperCase());
-        status.setTextColor(Color.rgb(102, 214, 140));
+            int[] pattern = LloydProtocol.frame(mainCommand, powerOn, temp, mode, fan, swing);
+            ir.transmit(38000, pattern);
+            status.setText("Sent  •  " + temp + "°C  •  " + mode.toUpperCase());
+            status.setTextColor(Color.rgb(102, 214, 140));
+        } catch (RuntimeException ex) {
+            String message = ex.getMessage();
+            if (message == null || message.trim().isEmpty()) message = "IR transmission failed";
+            status.setText("IR error: " + message);
+            status.setTextColor(Color.rgb(255, 183, 77));
+            Toast.makeText(this, "IR transmission failed", Toast.LENGTH_LONG).show();
+        }
     }
 
     private TextView section(String text) {
